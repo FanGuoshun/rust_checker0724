@@ -1,0 +1,13 @@
+[package]
+name = "rust_checker01"
+version = "0.1.0"
+authors = ["fanguoshun <1131315076@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest="0.9.19"
+rustc-serialize = "0.3.18"
+serde_derive = "1.0.97"
+serde_json = "1.0.40"
