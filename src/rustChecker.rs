@@ -1,78 +1,70 @@
-pub mod transactionForChecker;
 
-extern crate reqwest;
-extern crate serde_derive;
-extern crate serde_json;
-extern crate rustc_serialize;
-extern crate reqwest;
-// 引入rustc_serialize模块
-use rustc_serialize::json;
-use std::process::Command;
-use rustc_serialize::json;
-use transactionForChecker::TransactionForChecker;
-use std::env;
-use reqwest::Client;
-use reqwest::Error;
+pub mod pythonChecker {
 
-static mut LATESTPORT: i32 = 13000;
-static mut CHECKER_HOST: String = String::from("127.0.0.1");
-
-pub struct PythonChecker {
-    pythonScriptPath: String,
-    contractID: String,
-    methodID: String,
-    checkerProcess: Command,
-    port: i32,
-    pythonExecutable: String,
-
-}
-
-impl PythonChecker {
+    extern crate serde_derive;
+    extern crate serde_json;
+    extern crate rustc_serialize;
+    extern crate reqwest;
+    use rustc_serialize::json;
+    use std::process::{Command, Child};
+    use crate::transactionForChecker::transactionForChecker::TransactionForChecker;
+    use std::env;
+    use reqwest::Client;
+    use reqwest::Error;
+    use self::reqwest::Response;
 
 
-    pub fn getPythonExecutable() -> String{
-        String::from("/home/aaron/project/python2_env/env/bin/python")
+    static mut LATESTPORT: i32 = 13000;
+    static mut CHECKER_HOST: String = String::from("127.0.0.1");
+
+    pub struct PythonChecker {
+        pythonScriptPath: String,
+        contractID: String,
+        methodID: String,
+        port: i32,
+        pythonExecutable: String,
     }
 
-    pub unsafe fn new(&mut self, &contractID: String) -> PythonChecker {
-        self.contractID = contractID;
-        self.pythonScriptPath = "contracts/" + contractID + ".py";
-        self.pythonExecutable = getPythonExecutable();
-        if (LATESTPORT == 65535) {
-            LATESTPORT = 13000;
+    impl PythonChecker {
+        pub unsafe fn new(contractID: &String) -> PythonChecker {
+            if LATESTPORT == 65535 {
+                LATESTPORT = 13000;
+            }
+            LATESTPORT += 1;
+            PythonChecker {
+                pythonScriptPath: String::from("contracts/") + &contractID.to_string()+ &".py".to_string(),
+                contractID: contractID.to_string(),
+                methodID: String::from(""),
+                port: LATESTPORT,
+                pythonExecutable: String::from("/home/aaron/project/python2_env/env/bin/python"),
+            }
         }
-        LATESTPORT += 1;
-        self.port = LATESTPORT;
-    }
-    pub fn startChecker(&self) {
-        self::checkerProcess = Command::new(self.pythonExecutable)
-            .args(&[self.pythonScriptPath,
-                "checker", "--port"])
-            .arg(port)
-            .spawn()
-            .expect("Checker failed to start!");
+        pub fn startChecker(&self) -> Child {
+            println!("Starting checker@ {}", self.getURL(&"".to_string()));
+            let checkerProcess = Command::new(self.pythonExecutable)
+                .args(&[self.pythonScriptPath,
+                    "checker".to_string(), "--port".to_string()])
+                .arg(self.port.to_string())
+                .spawn()
+                .expect("Checker failed to start!");
+            checkerProcess
+        }
+        pub fn getContractID(&self) -> String {
+            self.contractID
+        }
+        pub fn getMethodID(&self) -> String {
+            self.methodID
+        }
+        pub unsafe fn getURL(&self, methodID: &String) -> String {
+            String::from("http://") + &CHECKER_HOST + &":".to_string() + &self.port.to_string()
+                + &"/".to_string() + &self.contractID.to_string() + &"/".to_string() + &methodID.to_string()
+        }
+        pub unsafe fn check(&self, transaction: &TransactionForChecker) -> Result<Response, Error> {
 
+            let postData = json::encode(&transaction).unwrap();
+            let url = self.getURL(&transaction.getMethodID());
+            let result = Client::new().post(&url).json(&postData).send();
+            result
+        }
     }
-    pub fn getContractID(&self) -> String{
-        self::contractID
-    }
-    pub fn getMethodID(&self) -> String{
-        self::methodID
-    }
-    pub unsafe fn getURL(&self, &methodID: String) -> String{
-        "http://"+&CHECKER_HOST+":"+self::port+"/"+self::contractID+"/"+methodID
-    }
-    pub fn check(&self, &transaction: TransactionForChecker) -> String{
-        println!("\nChecker URL:");
-        println!("\t" + self.getURL(transaction.getMethodID()));
-
-        let postData = json::encode(&transaction).unwrap();
-        let url = self.getURL(transaction.getMethodID());
-        Client::new().post(url).json(postData).send()?
-    }
-
-}
-
-fn main() {
-
 }
